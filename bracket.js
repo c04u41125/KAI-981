@@ -1,5 +1,6 @@
 const API='https://kai981-km-bot.kai981-km-bot.workers.dev/api/brackets';
 const $=id=>document.getElementById(id),params=new URLSearchParams(location.search),id=params.get('id')||params.get('s');
+if(id)document.body.classList.add('viewing-bracket');
 let token=new URLSearchParams(location.hash.slice(1)).get('edit')||'',data=null,busy=false,editing=false,loading=false,fitMode=true,scale=1;
 // 憑證只存當前分頁的 sessionStorage，不放查詢字串、公開連結或 localStorage。
 try{if(token){sessionStorage.setItem('bracket-edit-'+id,token);history.replaceState(null,'',location.pathname+location.search);}else token=sessionStorage.getItem('bracket-edit-'+id)||'';}catch{history.replaceState(null,'',location.pathname+location.search);}
