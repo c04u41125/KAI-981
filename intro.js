@@ -39,6 +39,6 @@
   document.documentElement.classList.add('intro-playing');
   skip.focus({ preventScroll: true });
   // Always release the homepage if the embedded animation fails to load.
-  timeout = setTimeout(finish, 22000);
-  frame.src = 'promo.html?v=immersive-20261028';
+  timeout = setTimeout(finish, 25000);
+  frame.src = 'promo.html?v=episode01-20261031';
 })();
