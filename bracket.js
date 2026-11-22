@@ -12,7 +12,7 @@ function render(){
  $('tournament').hidden=false;$('title').textContent=data.title;$('mode').textContent=data.canEdit?'ADMIN / 管理員編輯':'LIVE / 公開觀賽';
  $('meta').textContent=(data.published?data.players.length+' 位選手 · 單淘汰':'尚未發布 · 設定參賽名單')+' · 更新 '+new Date(data.updated*1000).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})+' · 每 10 秒更新';
  $('edit-roster').hidden=Boolean(registrationSchedule)||!data.canEdit||!data.published;
- $('delete-bracket').hidden=!data.canEdit;
+ $('delete-bracket').hidden=!registrationSchedule||!data.canEdit;
  $('setup').hidden=Boolean(registrationSchedule)||!(data.canEdit&&(!data.published||editing));if(!$('setup').hidden&&!$('name').value)$('name').value=data.title;
  $('share').disabled=!data.published;$('board').replaceChildren();
  const final=data.rounds.at(-1)?.[0];$('champion').hidden=!final?.winner;if(final?.winner)$('champion').textContent='CHAMPION / 冠軍　'+final.winner.name;
