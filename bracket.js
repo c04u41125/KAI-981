@@ -7,7 +7,8 @@ let token=new URLSearchParams(location.hash.slice(1)).get('edit')||'',data=null,
 try{if(token){sessionStorage.setItem('bracket-edit-'+id,token);history.replaceState(null,'',location.pathname+location.search);}else token=sessionStorage.getItem('bracket-edit-'+id)||'';}catch{history.replaceState(null,'',location.pathname+location.search);}
 const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 function status(text){$('status').textContent=text;}
-async function api(path='',body){const r=await fetch(requestUrl(path),{method:body?'POST':'GET',headers:{...(token?{Authorization:'Bearer '+token}:{}),...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,cache:'no-store',signal:AbortSignal.timeout(15000)});const value=await r.json();if(!r.ok){const error=Error(value.error||'讀取失敗');error.code=value.code;throw error;}rfunction ensureBracketExtras(){
+async function api(path='',body){const r=await fetch(requestUrl(path),{method:body?'POST':'GET',headers:{...(token?{Authorization:'Bearer '+token}:{}),...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,cache:'no-store',signal:AbortSignal.timeout(15000)});const value=await r.json();if(!r.ok){const error=Error(value.error||'讀取失敗');error.code=value.code;throw error;}return value;}
+function ensureBracketExtras(){
  if(!$('phase-tabs')){const tabs=el('div',undefined,'phase-tabs');tabs.id='phase-tabs';tabs.hidden=true;$('meta').after(tabs);}
  if(!$('standings')){const standings=el('section',undefined,'standings');standings.id='standings';standings.hidden=true;$('viewport').after(standings);}
  let note=$('format-note');if(!note){note=document.querySelector('#tournament > p.hint:last-child')||el('p');note.id='format-note';note.classList.add('hint');if(!note.isConnected)$('tournament').append(note);}
@@ -39,9 +40,13 @@ function render(){
 }izeBoard);
 
 
+
+
 }
 async function load(silent=false){if(deleted||loading||busy||editing)return;loading=true;try{if(!id){$('landing').hidden=false;const list=await api();$('events').replaceChildren();for(const e of list.brackets){const a=el('a',undefined,'event');a.href='/KAI-981/b/?s='+encodeURIComponent(e.short_code);a.append(el('p','SINGLE ELIMINATION'),el('h3',e.title),el('p','觀看對戰表 →'));$('events').append(a);}status(list.brackets.length?'選擇賽程即可觀看。':'目前尚無已發布賽程。');}else{const latest=await api(registrationSchedule?'':'/'+encodeURIComponent(id));if(deleted)return;if(!data||latest.version!==data.version||latest.canEdit!==data.canEdit){data=latest;render();}status('已連線 · '+new Date().toLocaleTimeString('zh-TW')+' 同步成功'+(token&&!latest.canEdit?'；編輯授權已失效，請私訊 Bot 重新授權。':''));}}catch(e){if(e.code==='BRACKET_DELETED'){showDeleted();return;}status('同步失敗：'+e.message+(data?'。畫面保留上次資料，稍後自動重試。':''));}finally{loading=false;}}
 async function save(body){if(busy)return false;busy=true;document.body.setAttribute('aria-busy','true');try{data=await api(registrationSchedule?'':'/'+id,{...body,version:data.version});editing=false;render();status('已儲存，觀眾將於下一次同步看到結果。');return true;}catch(e){if(e.code==='BRACKET_DELETED')showDeleted();else status(e.message);return false;}finally{busy=false;document.body.removeAttribute('aria-busy');document.querySelectorAll('#board button').forEach(b=>b.disabled=false);}}
+
+
 
 
 function showDeleted(){
@@ -59,13 +64,3 @@ $('delete-bracket').onclick=async()=>{
  catch(e){if(e.code==='BRACKET_DELETED')showDeleted();else status(e.message);}
  finally{busy=false;$('delete-bracket').disabled=false;}
 };
-$('edit-roster').onclick=()=>{editing=!editing;if(editing){$('name').value=data.title;$('players').value=data.players.map(p=>p.id+' '+p.name).join('\n');}render();$('edit-roster').textContent=editing?'取消編輯':'編輯參賽者／號碼牌';};
-$('setup').onsubmit=async e=>{e.preventDefault();const lines=$('players').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);const players=lines.map((line,i)=>{const m=line.match(/^(\d+)[\s.、:：]+(.+)$/);return {id:m?Number(m[1]):i+1,name:m?m[2].trim():line};});const hasResults=data.rounds.flat().some(m=>m.score);if(confirm(hasResults?'更新名單會清除全部晉級結果。確認重新編排？':'依號碼牌重新編排並公開名單，確認儲存？')){if(await save({action:'roster',title:$('name').value,players,resetResults:hasResults}))$('edit-roster').textContent='編輯參賽者／號碼牌';}};
-function resizeBoard(){const board=$('board'),viewport=$('viewport');if(!data?.rounds.length)return;const w=board.scrollWidth,h=board.scrollHeight;if(fitMode)scale=Math.min(1,viewport.clientWidth/w,Math.max(250,window.innerHeight-180)/h);board.style.transform='scale('+scale+')';$('canvas').style.width=w*scale+'px';$('canvas').style.height=h*scale+'px';$('zoom').value=Math.round(scale*100);$('zoom-value').textContent=Math.round(scale*100)+'%';}
-$('fit').onclick=()=>{fitMode=true;resizeBoard();};$('actual').onclick=()=>{fitMode=false;scale=1;resizeBoard();};$('zoom').oninput=()=>{fitMode=false;scale=Number($('zoom').value)/100;resizeBoard();};
-$('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('tournament').requestFullscreen();}catch{status('此瀏覽器不支援全螢幕，請用符合螢幕或橫向觀看。');}};
-window.addEventListener('resize',resizeBoard);document.addEventListener('fullscreenchange',()=>{fitMode=true;requestAnimationFrame(resizeBoard);});
-$('shuffle').onclick=()=>{const names=$('players').value.split(/\r?\n/).map(x=>x.trim().replace(/^\d+[\s.、:：]+/, '')).filter(Boolean);for(let i=names.length-1;i>0;i--){const range=i+1,limit=Math.floor(4294967296/range)*range;let n;do{n=crypto.getRandomValues(new Uint32Array(1))[0];}while(n>=limit);const j=n%range;[names[i],names[j]]=[names[j],names[i]];}$('players').value=names.map((name,i)=>(i+1)+' '+name).join('\n');status('已隨機排列，發布前仍可調整名單。');};
-$('refresh').onclick=()=>load();$('print').onclick=()=>window.print();$('share').onclick=async()=>{const url=registrationSchedule?new URL(location.pathname,location.origin):new URL('/KAI-981/b/',location.origin);if(registrationSchedule)url.searchParams.set('registrationSchedule',registrationSchedule);else url.searchParams.set('s',data.shortCode);try{await navigator.clipboard.writeText(url.href);status('已複製公開觀賽連結（不含編輯權限）。');}catch{status('觀賽連結：'+url.href);}};
-ensureBracketExtras();load();setInterval(()=>{if(!document.hidden)load(true);},10000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)load(true);});
-
